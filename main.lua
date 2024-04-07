@@ -6,20 +6,29 @@ function love.load()
     init_hash()
     WaneBoard:init()
 
-    orientation = 1 -- 1 for white perspective, -1 for black
+    --TODO: This doesn't do anything
+    orientation = -1 -- 1 for white perspective, -1 for black
 
+    side_to_move = WHITE
+
+    
 
     held = {
         piece = EMPTY,
         color = EMPTY,
         origin = nil
     }
-
+    -- https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces 
     chess = love.graphics.newImage("chess.png")
     pieces = {}
     iw, ih = chess:getDimensions()
     qw = iw / 6
     qh = ih / 2
+
+    SQUARE_SIZE = 64
+
+    SCALE_X = SQUARE_SIZE / qw
+    SCALE_Y = SQUARE_SIZE / qh
 
     for i = 0, 1 do
         for j = 0, 5 do
@@ -62,19 +71,21 @@ function love.load()
 end
 
 function love.mousepressed(x, y)
-    x = math.floor(x / 64)
-    y = math.floor(y / 64) - 1
+    x = math.floor(x / SQUARE_SIZE)
+    y = math.floor(y / SQUARE_SIZE) - 1
 
     local index = board64To120(8 * y + x)
 
-    held.piece = WaneBoard.pieces[index] or EMPTY
-    held.color = WaneBoard.colors[index] or EMPTY
-    held.origin = index
+    if (WaneBoard.colors[index] == side_to_move) then
+        held.piece = WaneBoard.pieces[index] or EMPTY
+        held.color = WaneBoard.colors[index] or EMPTY
+        held.origin = index
+    end
 end
 
 function love.mousereleased(x, y)
-    x = math.floor(x / 64)
-    y = math.floor(y / 64) - 1
+    x = math.floor(x / SQUARE_SIZE)
+    y = math.floor(y / SQUARE_SIZE) - 1
 
     local index = board64To120(8 * y + x)
 
@@ -88,22 +99,22 @@ function love.mousereleased(x, y)
     local ms = WaneBoard:genMoves()
 
     if (WaneBoard:makeLegalMove(moveattempt)) then
-        
+        side_to_move = -side_to_move
     end
-        -- Replace this with move logic
-        if true then --isValidMove(held.origin, index) then
-            --board        = string.sub(board, 1, index - 1) .. held.type .. string.sub(board, index + 1)
-            --board        = string.sub(board, 1, held.origin - 1) .. "-" .. string.sub(board, held.origin + 1)
+    -- Replace this with move logic
+    if true then     --isValidMove(held.origin, index) then
+        --board        = string.sub(board, 1, index - 1) .. held.type .. string.sub(board, index + 1)
+        --board        = string.sub(board, 1, held.origin - 1) .. "-" .. string.sub(board, held.origin + 1)
 
-            --board[y][x] = held.type
-            held.piece  = EMPTY
-            held.color  = EMPTY
-            held.origin = nil
-        else -- move is invalid
-            held.piece = EMPTY
-            held.color = EMPTY
-            held.origin = nil
-        end
+        --board[y][x] = held.type
+        held.piece  = EMPTY
+        held.color  = EMPTY
+        held.origin = nil
+    else     -- move is invalid
+        held.piece = EMPTY
+        held.color = EMPTY
+        held.origin = nil
+    end
 end
 
 function love.draw()
@@ -120,7 +131,7 @@ function love.draw()
                 color = darkColor
             end
             love.graphics.setColor(color)
-            love.graphics.rectangle('fill', j * 64, i * 64, 64, 64)
+            love.graphics.rectangle('fill', j * SQUARE_SIZE, i * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
         end
     end
     love.graphics.setColor(1, 1, 1)
@@ -133,7 +144,7 @@ function love.draw()
             if piece ~= EMPTY and color ~= EMPTY
                 and piece ~= INVALID and color ~= INVALID
                 and (index ~= held.origin) then
-                love.graphics.draw(chess, pieces[piece_link[color][piece]], j * 64, i * 64 + 64)
+                love.graphics.draw(chess, pieces[piece_link[color][piece]], j * SQUARE_SIZE, i * SQUARE_SIZE + SQUARE_SIZE, 0, SCALE_X, SCALE_Y)
             end
         end
     end
