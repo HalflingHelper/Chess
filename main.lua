@@ -1,4 +1,5 @@
 require 'WaneEngine.src.data'
+require 'WaneEngine.src.search'
 local WaneBoard = require 'WaneEngine.src.board'
 
 
@@ -9,16 +10,19 @@ function love.load()
     --TODO: This doesn't do anything
     orientation = -1 -- 1 for white perspective, -1 for black
 
-    side_to_move = WHITE
+    GameMode = "Engine"
 
-    
+    side_to_move = WHITE
+    comp_side = WHITE
+
+    result = nil
 
     held = {
         piece = EMPTY,
         color = EMPTY,
         origin = nil
     }
-    -- https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces 
+    -- https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces
     chess = love.graphics.newImage("chess.png")
     pieces = {}
     iw, ih = chess:getDimensions()
@@ -71,6 +75,13 @@ function love.load()
 end
 
 function love.mousepressed(x, y)
+    if GameMode == "Engine" then
+        if side_to_move == comp_side then
+            print("Skill Issue")
+            return
+        end
+    end
+
     x = math.floor(x / SQUARE_SIZE)
     y = math.floor(y / SQUARE_SIZE) - 1
 
@@ -98,11 +109,8 @@ function love.mousereleased(x, y)
 
     local ms = WaneBoard:genMoves()
 
-    if (WaneBoard:makeLegalMove(moveattempt)) then
-        side_to_move = -side_to_move
-    end
     -- Replace this with move logic
-    if true then     --isValidMove(held.origin, index) then
+    if true then --isValidMove(held.origin, index) then
         --board        = string.sub(board, 1, index - 1) .. held.type .. string.sub(board, index + 1)
         --board        = string.sub(board, 1, held.origin - 1) .. "-" .. string.sub(board, held.origin + 1)
 
@@ -110,14 +118,40 @@ function love.mousereleased(x, y)
         held.piece  = EMPTY
         held.color  = EMPTY
         held.origin = nil
-    else     -- move is invalid
+    else -- move is invalid
         held.piece = EMPTY
         held.color = EMPTY
         held.origin = nil
     end
+
+    if (WaneBoard:makeLegalMove(moveattempt)) then
+        side_to_move = -side_to_move
+    end
+end
+
+function love.update()
+    if GameMode == "Engine" then
+        if side_to_move == comp_side then
+            WaneBoard:genMoves()
+            WaneBoard:checkResult()
+
+            --No functionality for search timeout
+            alpha, m = searchRoot(WaneBoard)
+            alpha = side_to_move * alpha
+            print("Eval", alpha)
+
+            if (not WaneBoard:makeLegalMove(m)) then
+                print("Illegal move.")
+            else
+                WaneBoard:print()
+                side_to_move = -side_to_move
+            end
+        end
+    end
 end
 
 function love.draw()
+    if result then love.graphics.print(result) end
     -- Draw the board
     local color = { 1, 1, 1 }
     local lightColor = { .8, .8, .8 }
@@ -144,14 +178,16 @@ function love.draw()
             if piece ~= EMPTY and color ~= EMPTY
                 and piece ~= INVALID and color ~= INVALID
                 and (index ~= held.origin) then
-                love.graphics.draw(chess, pieces[piece_link[color][piece]], j * SQUARE_SIZE, i * SQUARE_SIZE + SQUARE_SIZE, 0, SCALE_X, SCALE_Y)
+                love.graphics.draw(chess, pieces[piece_link[color][piece]], j * SQUARE_SIZE,
+                    i * SQUARE_SIZE + SQUARE_SIZE, 0, SCALE_X, SCALE_Y)
             end
         end
     end
     if held.piece ~= EMPTY and held.color ~= EMPTY
         and held.piece ~= INVALID and held.color ~= INVALID then
         local x, y = love.mouse:getPosition()
-        love.graphics.draw(chess, pieces[piece_link[held.color][held.piece]], x - qw / 2, y - qh / 2)
+        love.graphics.draw(chess, pieces[piece_link[held.color][held.piece]], x - qw / 2, y - qh / 2, 0, SCALE_X, SCALE_Y,
+            -0.5 * SQUARE_SIZE / SCALE_X, -0.5 * SQUARE_SIZE / SCALE_Y)
     end
 end
 
